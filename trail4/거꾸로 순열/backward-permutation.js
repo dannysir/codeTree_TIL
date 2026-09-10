@@ -5,7 +5,7 @@ const n = Number(input[0]);
 
 const combination = (arr, visited, result) => {
     if (arr.length === n) {
-        result.push(arr);
+        result.push(arr.join(' '));
         return;
     }
 
@@ -18,4 +18,4 @@ const combination = (arr, visited, result) => {
 const result = [];
 combination([], 0, result);
 
-console.log(result.map(v => v.join(' ')).join('\n'));
+console.log(result.join('\n'));
