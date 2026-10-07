@@ -4,135 +4,131 @@ const input = fs.readFileSync(0).toString().trim().split('\n');
 class Node {
   left = null;
   right = null;
+  start = null;
+  end = null;
   name = null;
+  sum = 0;
   cnt = 0;
-  value = 0;
 
   constructor(start, end) {
     this.start = start;
     this.end = end;
   }
+
 }
 
 class SegTree {
-  static instance;
+  root = null;
+  nameMap = null;
+  valueMap = null;
 
   constructor() {
-    if (SegTree.instance) {
-      return SegTree.instance;
-    }
-
     this.init();
-    SegTree.instance = this;
   }
 
   init() {
-    this.root = new Node(1, 1_000_000_000);
+    this.root = new Node(0, 1_000_000_000);
     this.nameMap = new Map();
-    this.nodeMap = new Map();
+    this.valueMap = new Map();
   }
 
   insert(name, value) {
-    if (this.nameMap.has(name) || this.nodeMap.has(value)) {
-      return 0;
-    }
+    if (this.nameMap.has(name) || this.valueMap.has(value)) return 0;
 
-    let node = this.root;
+    if (this.root === null) this.init();
+
+    let cur = this.root;
 
     while (true) {
-      node.cnt++;
-      node.value += value;
+      cur.cnt++;
+      cur.sum += value;
 
-      if (node.start === node.end) {
-        node.name = name;
+      if (cur.start === cur.end) {
+        cur.name = name;
         this.nameMap.set(name, value);
-        this.nodeMap.set(value, node);
+        this.valueMap.set(value, cur);
         return 1;
       }
 
-      const mid = Math.floor((node.start + node.end) / 2);
+      const mid = Math.floor((cur.start + cur.end) / 2);
 
       if (value <= mid) {
-        if (node.left === null) {
-          node.left = new Node(node.start, mid);
+        if (cur.left === null) {
+          cur.left = new Node(cur.start, mid);
         }
 
-        node = node.left;
+        cur = cur.left;
       } else {
-        if (node.right === null) {
-          node.right = new Node(mid + 1, node.end);
+        if (cur.right === null) {
+          cur.right = new Node(mid + 1, cur.end);
         }
 
-        node = node.right;
+        cur = cur.right;
       }
+    }
+
+    return 1;
+  }
+
+  delete(name) {
+    if (!this.nameMap.has(name)) return 0;
+
+    if (this.root === null) this.init();
+
+    let cur = this.root;
+    let value = this.nameMap.get(name);
+
+    while(true) {
+      cur.cnt--;
+      cur.sum -= value;
+
+      if (cur.start === cur.end) {
+        this.nameMap.delete(name);
+        this.valueMap.delete(value);
+        return value;
+      }
+
+      const mid = Math.floor((cur.start + cur.end) / 2);
+
+      if (value <= mid) {
+        cur = cur.left;
+      } else {
+        cur = cur.right;
+      }
+    }
+  }
+
+  rank(k) {
+    if (this.root.cnt < k) return 'None';
+
+    let cur = this.root;
+
+    while (true) {
+      if (cur.start === cur.end) return cur.name;
+
+      const leftCnt = cur.left?.cnt ?? 0;
+
+      if (k <= leftCnt) {
+        cur = cur.left;
+      } else {
+        k -= leftCnt;
+        cur = cur.right;
+      }
+      
     }
   }
 
   sum(k) {
-    return this.#sum(this.root, k);
+    return this.#calcSum(this.root, k);
   }
 
-  #sum(node, k) {
-    if (node === null) return 0;
-
+  #calcSum(node, k) {
+    if (node === null) return 0
     if (node.start > k) return 0;
 
-    if (node.end <= k) return node.value;
+    if (node.end <= k) return node.sum;
 
-    return this.#sum(node.left, k) + this.#sum(node.right, k);
-  }
-
-  rank(k) {
-    if (k < 1 || k > this.root.cnt) {
-      return "None";
-    }
-
-    let node = this.root;
-
-    while (node.start !== node.end) {
-      const leftCnt = node.left?.cnt ?? 0;
-
-      if (k <= leftCnt) {
-        // k번째 데이터가 왼쪽 구간에 있음
-        node = node.left;
-      } else {
-        // 왼쪽 데이터를 제외하고 오른쪽에서 순위 탐색
-        k -= leftCnt;
-        node = node.right;
-      }
-    }
-
-    return node.name;
-  }
-
-  delete(name) {
-    if (!this.nameMap.has(name)) {
-      return 0;
-    }
-
-    const value = this.nameMap.get(name);
-    let node = this.root;
-
-    while (true) {
-      // 삭제 경로의 모든 노드에서 개수와 합 차감
-      node.cnt--;
-      node.value -= value;
-
-      if (node.start === node.end) {
-        node.name = null;
-        this.nameMap.delete(name);
-        this.nodeMap.delete(value);
-        return value;
-      }
-
-      const mid = Math.floor((node.start + node.end) / 2);
-
-      if (value <= mid) {
-        node = node.left;
-      } else {
-        node = node.right;
-      }
-    }
+    return this.#calcSum(node.left, k) + this.#calcSum(node.right, k);
   }
 }
 
